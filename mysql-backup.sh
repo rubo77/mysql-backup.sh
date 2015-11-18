@@ -11,6 +11,7 @@ MYSQL_USER=root
 MYSQL_PASS=$1
 MYSQL_CONN="-u${MYSQL_USER} -p${MYSQL_PASS}"
 #MYSQL_CONN=""
+TMP=mysql-backup.sql
 
 BACKUP_DIR=/backup/mysql/
 #BACKUP_DIR=/var/backups/mysql/
@@ -20,7 +21,7 @@ mkdir $BACKUP_DIR -p
 # neue backups erstellen
 MYSQLPATH=/var/lib/mysql/
 
-IGNORE="database1.table1 database1.table2 database2.table1"
+IGNORE="database1.table1, database1.table2, database2.table1,"
 
 # strpos $1 $2 [$3]
 # strpos haystack needle [optional offset of an input string]
@@ -45,7 +46,7 @@ echo "started "$(date)>>/var/log/mysql/backup.log
 cd $MYSQLPATH
 for i in */; do
     if [ $i != 'performance_schema/' ] ; then 
-        DB=`basename "$i"` 
+	DB=`basename "$i"` 
         #echo "backup $DB->$BACKUP_DIR$DB.sql.lzo"
         #mysqlcheck "$DB" $MYSQL_CONN --silent --auto-repair --optimize >/tmp/tmp_grep_mysql-backup
         mysqlcheck "$DB" $MYSQL_CONN --silent --auto-repair >/tmp/tmp_grep_mysql-backup
@@ -56,14 +57,22 @@ for i in */; do
        	tbl_count=0
 	for t in $(mysql -NBA -h $DB_host $MYSQL_CONN -D $DB -e 'show tables') 
 	do
-	  found=$(strpos "$IGNORE" "$DB"."$t")
+	  found=$(strpos "$IGNORE" "$DB"."$t,")
 	  if [ "$found" == "" ] ; then 
 	    #echo "DUMPING TABLE: $DB.$t"
-	    mysqldump -h $DB_host $MYSQL_CONN $DB $t --events --skip-lock-tables | lzop -3 -f -o $BACKUP_DIR/$DB.$t.sql.lzo
+	    #mysqldump -h $DB_host $MYSQL_CONN $DB $t --events --skip-lock-tables | grep -v '^-- Dump completed on .*$' | lzop -3 -f -o $BACKUP_DIR/$DB.$t.sql.lzo
+	    #set -x        
+	    mysqldump -h $DB_host $MYSQL_CONN $DB $t --events --skip-lock-tables | grep -v '^-- Dump completed on .*$' > /tmp/$TMP
+            if [ ! -f $BACKUP_DIR$DB.$t.sql.gz ] || [ "$(zdiff -q /tmp/$TMP $BACKUP_DIR$DB.$t.sql.gz)" != "" ]; then
+              echo $DB.$t changed
+              cd /tmp
+	      gzip -c $TMP > $BACKUP_DIR$DB.$t.sql.gz
+            fi
 	    tbl_count=$(( tbl_count + 1 ))
 	  fi
 	done
-	#echo "$tbl_count tables dumped from database '$DB' into dir=$BACKUP_DIR"
+	echo "$tbl_count tables dumped from database '$DB' into dir=$BACKUP_DIR"
+	#exit
     fi
 done
 
@@ -78,4 +87,3 @@ find $BACKUP_DIR -size +1000M -exec rm {} \;
 
 
 echo "finished "$(date)>>/var/log/mysql/backup.log
-
