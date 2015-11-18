@@ -1,27 +1,27 @@
 #!/bin/bash
 # mysql-backup.sh
 
-if [ -z "$1" ] ; then
-  echo
-  echo "ERROR: root password Parameter missing."
-  exit
-fi
+#if [ -z "$1" ] ; then
+#  echo
+#  echo "ERROR: root password Parameter missing."
+#  exit
+#fi
 DB_host=localhost
-MYSQL_USER=root
-MYSQL_PASS=$1
-MYSQL_CONN="-u${MYSQL_USER} -p${MYSQL_PASS}"
-#MYSQL_CONN=""
+#MYSQL_USER=root
+#MYSQL_PASS=$1
+#MYSQL_CONN="-u${MYSQL_USER} -p${MYSQL_PASS}"
+MYSQL_CONN=""
 TMP=mysql-backup.sql
 
-BACKUP_DIR=/backup/mysql/
-#BACKUP_DIR=/var/backups/mysql/
+#BACKUP_DIR=/backup/mysql/
+BACKUP_DIR=/var/backups/mysql/
 
 mkdir $BACKUP_DIR -p
 
 # neue backups erstellen
 MYSQLPATH=/var/lib/mysql/
 
-IGNORE="database1.table1, database1.table2, database2.table1,"
+IGNORE="spacetrace.trashcan, sql1.irc_log_080926, spacetracesql1.messages_bak, twolffsql2.aaa_disabled_az_text,"
 
 # strpos $1 $2 [$3]
 # strpos haystack needle [optional offset of an input string]
